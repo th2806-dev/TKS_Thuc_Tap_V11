@@ -1,0 +1,107 @@
+@inherits FBase
+
+<div class="modal fade show" tabindex="-1" role="dialog" aria-hidden="true" style="display: block; background-color: rgba(10, 10, 10, .8);">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                @if (r_iAuto_ID != 0)
+                {
+                    <h5 class="modal-title">@Get_Language_Data_Field("Hiệu chỉnh đơn vị tính")</h5>
+                }
+                else
+                {
+                    <h5 class="modal-title">@Get_Language_Data_Field("Thêm đơn vị tính")</h5>
+                }
+                <button type="button" class="btn-close" aria-label="Close" @onclick="Modal_Cancel"></button>
+            </div>
+
+            @((MarkupString)r_strError)
+
+            <EditForm Model="@m_objData">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-lg-12">
+                            <label class="form-label">@Get_Language_Data_Field("Tên đơn vị tính"):</label>
+                            <input @ref="txtFocus" @bind="m_objData.Ten_Don_Vi_Tinh" class="form-control" maxlength="200" />
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-lg-12">
+                            <label class="form-label">@Get_Language_Data_Field("Ghi chú"):</label>
+                            <textarea @bind="m_objData.Ghi_Chu" class="form-control" maxlength="500" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </EditForm>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" @onclick="Save_Data">
+                    @Get_Language_Data_Field("Lưu Thay Đổi")
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CDM_Don_Vi_Tinh m_objData = new();
+
+    protected override void Load_Data()
+    {
+        if (r_iAuto_ID == 0)
+            return;
+
+        var v_objController = new CDM_Don_Vi_Tinh_Controller();
+        m_objData = v_objController.FQ_111_DVT_sp_sel_Get_By_ID(r_iAuto_ID);
+
+        if (m_objData == null)
+        {
+            m_objData = new CDM_Don_Vi_Tinh();
+            r_iAuto_ID = 0;
+            return;
+        }
+
+        r_bUpdate = true;
+        var v_objSource = new CDM_Don_Vi_Tinh();
+        CUtility.Clone_Entity(m_objData, v_objSource);
+        r_objSource = v_objSource;
+    }
+
+    protected override void Add_Data()
+    {
+        Check_Data();
+
+        m_objData.Created_By = r_strActive_User_Name;
+        m_objData.Created_By_Function = r_strActive_Function_Code;
+        m_objData.Last_Updated_By = r_strActive_User_Name;
+        m_objData.Last_Updated_By_Function = r_strActive_Function_Code;
+
+        var v_objController = new CDM_Don_Vi_Tinh_Controller();
+        m_objData.Auto_ID = r_iAuto_ID = v_objController.FQ_111_DVT_sp_ins_Insert(m_objData);
+
+        r_strAdd_Key = m_objData.Ten_Don_Vi_Tinh;
+        CCache_Don_Vi_Tinh.Add_Data(m_objData);
+    }
+
+    protected override void Update_Data()
+    {
+        Check_Data();
+
+        m_objData.Last_Updated_By = r_strActive_User_Name;
+        m_objData.Last_Updated_By_Function = r_strActive_Function_Code;
+
+        var v_objController = new CDM_Don_Vi_Tinh_Controller();
+        v_objController.FQ_111_DVT_sp_upd_Update(m_objData);
+
+        var v_objDes = new CDM_Don_Vi_Tinh();
+        CUtility.Clone_Entity(m_objData, v_objDes);
+        r_objDes = v_objDes;
+        CCache_Don_Vi_Tinh.Update_Data(m_objData);
+    }
+
+    private void Check_Data()
+    {
+        if (string.IsNullOrWhiteSpace(m_objData.Ten_Don_Vi_Tinh))
+            throw new Exception("Tên đơn vị tính không được để trống.");
+    }
+}
