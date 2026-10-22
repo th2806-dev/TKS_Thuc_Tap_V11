@@ -1,0 +1,130 @@
+@inherits FBase
+
+@Layout_Default_Filter(m_grdData, "")
+
+<div class="row" style="padding-top: 10px;">
+    <div class="col-lg-12">
+        @((MarkupString)r_strError)
+        <TelerikGrid Data="@m_arrData" Height="calc(100vh - 170px)" Resizable="true" Reorderable="true" @ref="@m_grdData">
+            <GridExport>
+                <GridExcelExport FileName="Nhap_Kho_Export" AllPages="true" />
+                <GridCsvExport FileName="Nhap_Kho_Export" AllPages="true" />
+            </GridExport>
+            <GridColumns>
+                <GridCheckboxColumn SelectAll="true" CheckBoxOnlySelection="true" Width="30px" />
+                <GridColumn Width="100px">
+                    <Template>
+                        @{
+                            var v_objData = context as CDM_Nhap_Kho;
+                        }
+                        <button type="button" class="btn btn-link" title="Chi tiết" @onclick="@(() => Open_Detail(v_objData.Auto_ID))">
+                            <i class="mdi mdi-format-list-bulleted" style="color: purple;"></i>
+                        </button>
+                        <button type="button" class="btn btn-link" title="In phiếu" @onclick="@(() => Open_Print(v_objData.Auto_ID))">
+                            <i class="mdi mdi-printer" style="color: purple;"></i>
+                        </button>
+                        <button type="button" class="btn btn-link" data-bs-toggle="dropdown" aria-expanded="false" title="Thao tác">
+                            <i class="mdi mdi-cog-outline" style="color: purple;"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            @if (r_objChuc_Nang.Is_Have_Edit_Permission)
+                            {
+                                <li>
+                                    <button class="dropdown-item" type="button" @onclick="@(() => Open_Edit(v_objData.Auto_ID))">
+                                        <i class="ri-edit-2-line align-bottom me-1"></i>&nbsp; @Get_Language_Data_Field("Hiệu chỉnh thông tin phiếu")
+                                    </button>
+                                </li>
+                            }
+                            @if (r_objChuc_Nang.Is_Have_Delete_Permission)
+                            {
+                                <li>
+                                    <button class="dropdown-item" type="button" @onclick="@(() => Delete_Data(v_objData.Auto_ID))">
+                                        <i class="ri-delete-bin-line align-bottom me-1"></i>&nbsp; @Get_Language_Data_Field("Xóa phiếu")
+                                    </button>
+                                </li>
+                            }
+                        </ul>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(CDM_Nhap_Kho.So_Phieu_Nhap_Kho)" Title="Số phiếu nhập" Width="180px" />
+                <GridColumn Field="@nameof(CDM_Nhap_Kho.Ngay_Nhap_Kho)" Title="Ngày nhập" DisplayFormat="{0:dd/MM/yyyy}" Width="140px" />
+                <GridColumn Field="@nameof(CDM_Nhap_Kho.Ten_Kho)" Title="Kho" Width="180px" />
+                <GridColumn Field="@nameof(CDM_Nhap_Kho.Ten_NCC)" Title="Nhà cung cấp" Width="220px" />
+                <GridColumn Field="@nameof(CDM_Nhap_Kho.Ghi_Chu)" Title="Ghi chú" />
+            </GridColumns>
+        </TelerikGrid>
+    </div>
+</div>
+
+@if (r_bIs_Show_Edit)
+{
+    <F2212_3_B_Nhap_Kho_Header_Edit r_iAuto_ID="@r_iAuto_ID" OnClose="@Close_Edit" />
+}
+@if (m_bIs_Show_Detail)
+{
+    <F2213_3_C_Nhap_Kho_Raw_Data_Edit r_iNhap_Kho_ID="@m_iDetail_ID" OnClose="@Close_Detail" />
+}
+@if (m_bIs_Show_Print)
+{
+    <F2211_4_A_Report r_iAuto_ID="@m_iPrint_ID" OnClose="@Close_Print" />
+}
+@if (r_bIs_Show_Help_Guide)
+{
+    <FCommon_Help_Guide m_strFCode="@r_strActive_Function_Code" OnClose="@Close_Helpguide" />
+}
+
+@code {
+    private List<CDM_Nhap_Kho> m_arrData = new();
+    private TelerikGrid<CDM_Nhap_Kho> m_grdData = new();
+    private long m_iDetail_ID;
+    private long m_iPrint_ID;
+    private bool m_bIs_Show_Detail;
+    private bool m_bIs_Show_Print;
+
+    protected override void Load_Data()
+    {
+        Format_Grid(m_grdData);
+        var v_objController = new CDM_Nhap_Kho_Controller();
+        HashSet<long> v_setAllowedKho_ID = CCommonFunction.Get_Kho_ID_By_User(r_strActive_User_Name);
+        m_arrData = v_objController.FQ_121_NK_sp_sel_List_By_Created(r_objFilter.Date_From, r_objFilter.Date_To)
+            .Where(v_objData => v_setAllowedKho_ID.Contains(v_objData.Kho_ID))
+            .ToList();
+    }
+
+    private void Open_Detail(long p_iAuto_ID)
+    {
+        m_iDetail_ID = p_iAuto_ID;
+        m_bIs_Show_Detail = true;
+    }
+
+    private void Open_Print(long p_iAuto_ID)
+    {
+        m_iPrint_ID = p_iAuto_ID;
+        m_bIs_Show_Print = true;
+    }
+
+    private Task Close_Detail(CEvent_Call_Back p_objEvent)
+    {
+        if (p_objEvent.Message_ID == (int)EModal_Result.Close_Cancel)
+            m_bIs_Show_Detail = false;
+        return Task.CompletedTask;
+    }
+
+    private Task Close_Print(CEvent_Call_Back p_objEvent)
+    {
+        if (p_objEvent.Message_ID == (int)EModal_Result.Close_Cancel)
+            m_bIs_Show_Print = false;
+        return Task.CompletedTask;
+    }
+
+    protected override void Delete_Data_Entry(long p_iAuto_ID)
+    {
+        var v_objController = new CDM_Nhap_Kho_Controller();
+        var v_objData = v_objController.FQ_121_NK_sp_sel_Get_By_ID(p_iAuto_ID)
+            ?? throw new InvalidOperationException("Phiếu nhập không còn tồn tại hoặc đã bị xóa.");
+        if (!CCommonFunction.Is_User_Allowed_Kho(r_strActive_User_Name, v_objData.Kho_ID))
+            throw new UnauthorizedAccessException("Bạn không được phân quyền truy cập kho của phiếu nhập này.");
+        r_strDelete_Key = v_objData.So_Phieu_Nhap_Kho;
+        v_objController.FQ_121_NK_sp_del_Delete_By_ID(p_iAuto_ID, r_strActive_User_Name, r_strActive_Function_Code);
+    }
+}
