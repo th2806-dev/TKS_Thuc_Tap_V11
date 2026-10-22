@@ -1,0 +1,61 @@
+@inherits FBase_Combo
+
+<TelerikMultiColumnComboBox @bind-Value="@BindingValue"
+                            ScrollMode="@DropDownScrollMode.Virtual"
+                            Data="@m_arrData"
+                            ValueField="@(nameof(CDM_Kho.Auto_ID))"
+                            TextField="@(nameof(CDM_Kho.Ten_Kho))"
+                            Width="100%"
+                            PageSize="10"
+                            ItemHeight="35"
+                            Filterable="true"
+                            FilterOperator="@StringFilterOperator.Contains"
+                            ListHeight="260px">
+    <MultiColumnComboBoxColumns>
+        <MultiColumnComboBoxColumn Field="@nameof(CDM_Kho.Ten_Kho)" Title="@Get_Language_Data_Field("Tên kho")" Width="250px" Class="k-tks-combobox-item" HeaderClass="k-tks-combobox-header" />
+        <MultiColumnComboBoxColumn Field="@nameof(CDM_Kho.Ghi_Chu)" Title="@Get_Language_Data_Field("Ghi chú")" Width="250px" Class="k-tks-combobox-item" HeaderClass="k-tks-combobox-header" />
+    </MultiColumnComboBoxColumns>
+</TelerikMultiColumnComboBox>
+
+@code {
+    private List<CDM_Kho> m_arrData = new();
+    private string m_strLoaded_Ma_Dang_Nhap = "";
+    private bool m_bLoaded_Add_All_Option;
+    private bool m_bData_Loaded;
+
+    [Parameter]
+    public string m_strMa_Dang_Nhap { get; set; } = "";
+
+    [Parameter]
+    public bool m_bAdd_All_Option { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        if (m_bData_Loaded
+            && (!string.Equals(m_strLoaded_Ma_Dang_Nhap, m_strMa_Dang_Nhap, StringComparison.Ordinal)
+                || m_bLoaded_Add_All_Option != m_bAdd_All_Option))
+        {
+            Load_Data_Init();
+        }
+    }
+
+    protected override void Load_Data()
+    {
+        m_arrData = CCommonFunction.Get_Kho_Data_By_User(m_strMa_Dang_Nhap);
+        if (m_bAdd_All_Option)
+        {
+            // ID -5 đại diện cho lựa chọn tổng hợp trên báo cáo.
+            m_arrData.Insert(0, new CDM_Kho
+            {
+                Auto_ID = -5,
+                Ten_Kho = Get_Language_Data_Field("Tất cả")
+            });
+        }
+
+        m_strLoaded_Ma_Dang_Nhap = m_strMa_Dang_Nhap;
+        m_bLoaded_Add_All_Option = m_bAdd_All_Option;
+        m_bData_Loaded = true;
+    }
+}
