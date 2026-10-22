@@ -1,0 +1,59 @@
+@inherits FBase
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-3">@Get_Language_Data_Field("Báo cáo chi tiết hàng nhập")</h5>
+        @((MarkupString)r_strError)
+        <div class="d-flex flex-wrap align-items-end gap-2">
+            <div>
+                <label class="form-label">@Get_Language_Data_Field("Từ ngày")</label>
+                <TelerikDatePicker @bind-Value="r_objFilter.Date_From" Format="@CConfig.Date_Format_String" />
+            </div>
+            <div>
+                <label class="form-label">@Get_Language_Data_Field("Đến ngày")</label>
+                <TelerikDatePicker @bind-Value="r_objFilter.Date_To" Format="@CConfig.Date_Format_String" />
+            </div>
+            <button type="button" class="btn btn-primary" @onclick="Tim_Kiem_Click">
+                <i class="ri-search-line"></i> @Get_Language_Data_Field("Tìm kiếm")
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <TelerikGrid Data="@m_arrData" Height="calc(100vh - 260px)" Resizable="true" Reorderable="true" @ref="m_grdData">
+            <GridExport>
+                <GridExcelExport FileName="Bao_Cao_Chi_Tiet_Nhap" AllPages="true" />
+                <GridCsvExport FileName="Bao_Cao_Chi_Tiet_Nhap" AllPages="true" />
+            </GridExport>
+            <GridColumns>
+                <GridColumn Field="@nameof(CBao_Cao_Chi_Tiet_Nhap.Ngay_Nhap_Kho)" Title="Ngày nhập" DisplayFormat="{0:dd/MM/yyyy}" Width="130px" />
+                <GridColumn Field="@nameof(CBao_Cao_Chi_Tiet_Nhap.So_Phieu_Nhap_Kho)" Title="Số phiếu nhập" Width="160px" />
+                <GridColumn Field="@nameof(CBao_Cao_Chi_Tiet_Nhap.Ten_Kho)" Title="Kho" Width="180px" />
+                <GridColumn Field="@nameof(CBao_Cao_Chi_Tiet_Nhap.Ten_NCC)" Title="Nhà cung cấp" Width="200px" />
+                <GridColumn Field="@nameof(CBao_Cao_Chi_Tiet_Nhap.Ma_San_Pham)" Title="Mã sản phẩm" Width="140px" />
+                <GridColumn Field="@nameof(CBao_Cao_Chi_Tiet_Nhap.Ten_San_Pham)" Title="Tên sản phẩm" Width="220px" />
+                <GridColumn Field="@nameof(CBao_Cao_Chi_Tiet_Nhap.Ten_Don_Vi_Tinh)" Title="Đơn vị tính" Width="130px" />
+                <GridColumn Field="@nameof(CBao_Cao_Chi_Tiet_Nhap.SL_Nhap)" Title="SL nhập" DisplayFormat="{0:N2}" Width="120px" />
+                <GridColumn Field="@nameof(CBao_Cao_Chi_Tiet_Nhap.Don_Gia_Nhap)" Title="Đơn giá" DisplayFormat="{0:N0}" Width="140px" />
+                <GridColumn Field="@nameof(CBao_Cao_Chi_Tiet_Nhap.Tri_Gia)" Title="Trị giá" DisplayFormat="{0:N0}" Width="150px" />
+            </GridColumns>
+        </TelerikGrid>
+    </div>
+</div>
+
+@code {
+    private List<CBao_Cao_Chi_Tiet_Nhap> m_arrData = new();
+    private TelerikGrid<CBao_Cao_Chi_Tiet_Nhap> m_grdData = new();
+
+    protected override void Load_Data()
+    {
+        if (r_objFilter.Date_From.HasValue && r_objFilter.Date_To.HasValue
+            && r_objFilter.Date_From.Value.Date > r_objFilter.Date_To.Value.Date)
+            throw new InvalidOperationException("Ngày bắt đầu không được lớn hơn ngày kết thúc.");
+
+        var v_objController = new CBao_Cao_Chi_Tiet_Nhap_Controller();
+        HashSet<long> v_setAllowedKho_ID = CCommonFunction.Get_Kho_ID_By_User(r_strActive_User_Name);
+        m_arrData = v_objController.FQ_125_BCN_sp_sel_List_By_Date(r_objFilter.Date_From, r_objFilter.Date_To)
+            .Where(v_objData => v_setAllowedKho_ID.Contains(v_objData.Kho_ID))
+            .ToList();
+    }
+}

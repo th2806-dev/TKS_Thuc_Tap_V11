@@ -1,0 +1,95 @@
+@inherits FBase
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-3">@Get_Language_Data_Field("Báo cáo xuất - nhập - tồn")</h5>
+        @((MarkupString)r_strError)
+        <div class="d-flex flex-wrap align-items-end gap-2">
+            <div>
+                <label class="form-label">@Get_Language_Data_Field("Từ ngày")</label>
+                <TelerikDatePicker @bind-Value="r_objFilter.Date_From" Format="@CConfig.Date_Format_String" />
+            </div>
+            <div>
+                <label class="form-label">@Get_Language_Data_Field("Đến ngày")</label>
+                <TelerikDatePicker @bind-Value="r_objFilter.Date_To" Format="@CConfig.Date_Format_String" />
+            </div>
+            <div style="min-width: 260px;">
+                <label class="form-label">@Get_Language_Data_Field("Kho")</label>
+                <FControl_Kho_Combo @bind-BindingValue="m_iKho_ID"
+                                    m_strMa_Dang_Nhap="@r_strActive_User_Name"
+                                    m_bAdd_All_Option="true" />
+            </div>
+            <button type="button" class="btn btn-primary" @onclick="Tim_Kiem_Click">
+                <i class="ri-search-line"></i> @Get_Language_Data_Field("Tìm kiếm")
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <TelerikGrid Data="@m_arrData" Height="calc(100vh - 280px)" Resizable="true" Reorderable="true" @ref="m_grdData">
+            <GridExport>
+                <GridExcelExport FileName="Bao_Cao_Xuat_Nhap_Ton" AllPages="true" />
+                <GridCsvExport FileName="Bao_Cao_Xuat_Nhap_Ton" AllPages="true" />
+            </GridExport>
+            <GridColumns>
+                <GridColumn Field="@nameof(CBao_Cao_Xuat_Nhap_Ton.Ma_San_Pham)" Title="Mã sản phẩm" Width="160px" />
+                <GridColumn Field="@nameof(CBao_Cao_Xuat_Nhap_Ton.Ten_San_Pham)" Title="Tên sản phẩm" Width="240px" />
+                <GridColumn Field="@nameof(CBao_Cao_Xuat_Nhap_Ton.Ten_Loai_San_Pham)" Title="Loại sản phẩm" Width="180px" />
+                <GridColumn Field="@nameof(CBao_Cao_Xuat_Nhap_Ton.Ten_Don_Vi_Tinh)" Title="Đơn vị tính" Width="130px" />
+                <GridColumn Field="@nameof(CBao_Cao_Xuat_Nhap_Ton.SL_Dau_Ky)" Title="SL đầu kỳ" DisplayFormat="{0:N2}" Width="150px" />
+                <GridColumn Field="@nameof(CBao_Cao_Xuat_Nhap_Ton.SL_Nhap)" Title="SL nhập" DisplayFormat="{0:N2}" Width="150px" />
+                <GridColumn Field="@nameof(CBao_Cao_Xuat_Nhap_Ton.SL_Xuat)" Title="SL xuất" DisplayFormat="{0:N2}" Width="150px" />
+                <GridColumn Field="@nameof(CBao_Cao_Xuat_Nhap_Ton.SL_Cuoi_Ky)" Title="SL cuối kỳ" DisplayFormat="{0:N2}" Width="150px" />
+            </GridColumns>
+        </TelerikGrid>
+    </div>
+</div>
+
+@code {
+    private List<CBao_Cao_Xuat_Nhap_Ton> m_arrData = new();
+    private TelerikGrid<CBao_Cao_Xuat_Nhap_Ton> m_grdData = new();
+    private long m_iKho_ID = -5;
+
+    protected override void Load_Data()
+    {
+        if (r_objFilter.Date_From.HasValue && r_objFilter.Date_To.HasValue
+            && r_objFilter.Date_From.Value.Date > r_objFilter.Date_To.Value.Date)
+            throw new InvalidOperationException("Ngày bắt đầu không được lớn hơn ngày kết thúc.");
+
+        List<CDM_Kho> v_arrAllowedKho = CCommonFunction.Get_Kho_Data_By_User(r_strActive_User_Name);
+        var v_objController = new CBao_Cao_Xuat_Nhap_Ton_Controller();
+        if (m_iKho_ID > 0)
+        {
+            if (!CCommonFunction.Is_User_Allowed_Kho(r_strActive_User_Name, m_iKho_ID))
+                throw new UnauthorizedAccessException("Bạn không được phân quyền xem báo cáo của kho đã chọn.");
+
+            m_arrData = v_objController.FQ_127_BCT_sp_sel_List_By_Date(
+                r_objFilter.Date_From, r_objFilter.Date_To, m_iKho_ID);
+            return;
+        }
+
+        if (CCommonFunction.Is_User_In_Kho_Admin_Group(r_strActive_User_Name))
+        {
+            m_arrData = v_objController.FQ_127_BCT_sp_sel_List_By_Date(
+                r_objFilter.Date_From, r_objFilter.Date_To, -5);
+            return;
+        }
+
+        List<CBao_Cao_Xuat_Nhap_Ton> v_arrByAllowedKho = v_arrAllowedKho
+            .SelectMany(v_objKho => v_objController.FQ_127_BCT_sp_sel_List_By_Date(
+                r_objFilter.Date_From, r_objFilter.Date_To, v_objKho.Auto_ID))
+            .ToList();
+
+        m_arrData = v_arrByAllowedKho
+            .GroupBy(v_objData => v_objData.San_Pham_ID)
+            .Select(v_arrProduct =>
+            {
+                CBao_Cao_Xuat_Nhap_Ton v_objResult = v_arrProduct.First();
+                v_objResult.SL_Dau_Ky = v_arrProduct.Sum(v_objData => v_objData.SL_Dau_Ky);
+                v_objResult.SL_Nhap = v_arrProduct.Sum(v_objData => v_objData.SL_Nhap);
+                v_objResult.SL_Xuat = v_arrProduct.Sum(v_objData => v_objData.SL_Xuat);
+                v_objResult.SL_Cuoi_Ky = v_arrProduct.Sum(v_objData => v_objData.SL_Cuoi_Ky);
+                return v_objResult;
+            })
+            .ToList();
+    }
+}
