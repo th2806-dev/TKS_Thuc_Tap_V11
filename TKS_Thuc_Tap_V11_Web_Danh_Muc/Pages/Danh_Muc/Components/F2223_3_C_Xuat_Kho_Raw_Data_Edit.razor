@@ -1,0 +1,256 @@
+@inherits FBase
+
+<div class="modal fade show" tabindex="-1" role="dialog" aria-hidden="true" style="display: block; background-color: rgba(10, 10, 10, .8);">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title">@Get_Language_Data_Field("Chi tiết phiếu xuất kho")</h5>
+                <button type="button" class="btn-close" aria-label="Close" @onclick="Modal_Cancel"></button>
+            </div>
+            @((MarkupString)r_strError)
+            <div class="modal-body">
+                @if (m_objHeader != null)
+                {
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="row mb-3">
+                                <div class="col-lg-11">
+                                    <label class="form-label-info">@Get_Language_Data_Field("Số phiếu xuất")</label><br />
+                                    <span class="form-label">@CUtility.Get_Label_Text(m_objHeader.So_Phieu_Xuat_Kho, false)</span>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-lg-11">
+                                    <label class="form-label-info">@Get_Language_Data_Field("Ngày xuất kho")</label><br />
+                                    <span class="form-label">@CUtility.Get_Label_Text(m_objHeader.Ngay_Xuat_Kho, false)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="row mb-3">
+                                <div class="col-lg-11">
+                                    <label class="form-label-info">@Get_Language_Data_Field("Kho")</label><br />
+                                    <span class="form-label">@CUtility.Get_Label_Text(m_objHeader.Ten_Kho, false)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                <TelerikGrid Data="@m_arrData" Height="420px" Resizable="true">
+                    <GridColumns>
+                        <GridColumn Field="@nameof(CDM_Xuat_Kho_Raw_Data.Ma_San_Pham)" Title="Mã sản phẩm" Width="140px" />
+                        <GridColumn Field="@nameof(CDM_Xuat_Kho_Raw_Data.Ten_San_Pham)" Title="Tên sản phẩm" Width="220px" />
+                        <GridColumn Field="@nameof(CDM_Xuat_Kho_Raw_Data.Ten_Don_Vi_Tinh)" Title="Đơn vị tính" Width="130px" />
+                        <GridColumn Field="@nameof(CDM_Xuat_Kho_Raw_Data.SL_Xuat)" Title="Số lượng" DisplayFormat="{0:N2}" Width="130px" />
+                        <GridColumn Field="@nameof(CDM_Xuat_Kho_Raw_Data.Don_Gia_Xuat)" Title="Đơn giá" DisplayFormat="{0:N0}" Width="150px" />
+                        <GridColumn Field="@nameof(CDM_Xuat_Kho_Raw_Data.Tri_Gia)" Title="Trị giá" DisplayFormat="{0:N0}" Width="160px" />
+                        <GridColumn Title="Thêm" Width="70px">
+                            <HeaderTemplate>
+                                @if (r_objChuc_Nang.Is_Have_Add_Permission)
+                                {
+                                    <button type="button" class="btn btn-link" title="Thêm" @onclick="Open_Add">
+                                        <i class="ri-add-line"></i>
+                                    </button>
+                                }
+                            </HeaderTemplate>
+                            <Template></Template>
+                        </GridColumn>
+                        <GridColumn Title="Sửa" Width="70px">
+                            <Template>
+                                @{
+                                    var v_objData = context as CDM_Xuat_Kho_Raw_Data;
+                                }
+                                @if (r_objChuc_Nang.Is_Have_Edit_Permission)
+                                {
+                                    <button type="button" class="btn btn-link" title="Sửa" @onclick="@(() => Open_Update(v_objData))">
+                                        <i class="ri-edit-2-line"></i>
+                                    </button>
+                                }
+                            </Template>
+                        </GridColumn>
+                        <GridColumn Title="Xóa" Width="70px">
+                            <Template>
+                                @{
+                                    var v_objData = context as CDM_Xuat_Kho_Raw_Data;
+                                }
+                                @if (r_objChuc_Nang.Is_Have_Delete_Permission)
+                                {
+                                    <button type="button" class="btn btn-link" title="Xóa" @onclick="@(() => Delete_Data(v_objData.Auto_ID))">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                }
+                            </Template>
+                        </GridColumn>
+                    </GridColumns>
+                </TelerikGrid>
+                <div class="text-end mt-3">
+                    <strong>Tổng số lượng:</strong> @m_arrData.Sum(x => x.SL_Xuat).ToString("N2")
+                    <span class="ms-4"><strong>Tổng trị giá:</strong> @m_arrData.Sum(x => x.Tri_Gia).ToString("N0")</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (m_bIs_Show_Edit)
+{
+    <div class="modal fade show" tabindex="-1" role="dialog" aria-hidden="true" style="display: block; background-color: rgba(10, 10, 10, .55);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title">@Get_Language_Data_Field(m_bIs_Update ? "Hiệu chỉnh chi tiết xuất" : "Thêm chi tiết xuất")</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="Cancel_Edit"></button>
+                </div>
+                @((MarkupString)r_strError)
+                <EditForm Model="@m_objEdit" OnSubmit="@Handle_Edit_Submit">
+                    <div class="modal-body">
+                        @if (m_bIs_Update)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">@Get_Language_Data_Field("Mã sản phẩm")</label>
+                                <input class="form-control" value="@m_objEdit.Ma_San_Pham - @m_objEdit.Ten_San_Pham" readonly />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">@Get_Language_Data_Field("Sản phẩm")</label>
+                                <FControl_San_Pham_Combo @bind-BindingValue="m_objEdit.San_Pham_ID" />
+                            </div>
+                        }
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@Get_Language_Data_Field("Số lượng")</label>
+                                <input type="number" min="0.000001" step="any" class="form-control" @bind="m_objEdit.SL_Xuat" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@Get_Language_Data_Field("Đơn giá")</label>
+                                <input type="number" min="0" step="any" class="form-control" @bind="m_objEdit.Don_Gia_Xuat" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="Cancel_Edit">@Get_Language_Data_Field("Hủy")</button>
+                        <button type="submit" class="btn btn-primary">@Get_Language_Data_Field("Lưu")</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public long r_iXuat_Kho_ID { get; set; }
+
+    private CDM_Xuat_Kho m_objHeader;
+    private List<CDM_Xuat_Kho_Raw_Data> m_arrData = new();
+    private CDM_Xuat_Kho_Raw_Data m_objEdit = new();
+    private CDM_Xuat_Kho_Raw_Data m_objEdit_Source;
+    private bool m_bIs_Show_Edit;
+    private bool m_bIs_Update;
+
+    private Task Handle_Edit_Submit(Microsoft.AspNetCore.Components.Forms.EditContext p_objEditContext)
+    {
+        return Save_Detail();
+    }
+
+    protected override void Load_Data()
+    {
+        var v_objHeaderController = new CDM_Xuat_Kho_Controller();
+        m_objHeader = v_objHeaderController.FQ_123_XK_sp_sel_Get_By_ID(r_iXuat_Kho_ID)
+            ?? throw new InvalidOperationException("Phiếu xuất không còn tồn tại hoặc đã bị xóa.");
+        if (!CCommonFunction.Is_User_Allowed_Kho(r_strActive_User_Name, m_objHeader.Kho_ID))
+            throw new UnauthorizedAccessException("Bạn không được phân quyền truy cập kho của phiếu xuất này.");
+        var v_objDetailController = new CDM_Xuat_Kho_Raw_Data_Controller();
+        m_arrData = v_objDetailController.FQ_124_XKR_sp_sel_List_By_Xuat_Kho_ID(r_iXuat_Kho_ID);
+    }
+
+    private void Open_Add()
+    {
+        r_strError = "";
+        m_bIs_Update = false;
+        m_objEdit = new CDM_Xuat_Kho_Raw_Data { Xuat_Kho_ID = r_iXuat_Kho_ID };
+        m_objEdit_Source = null;
+        m_bIs_Show_Edit = true;
+    }
+
+    private void Open_Update(CDM_Xuat_Kho_Raw_Data p_objData)
+    {
+        r_strError = "";
+        m_bIs_Update = true;
+        m_objEdit = new CDM_Xuat_Kho_Raw_Data();
+        CUtility.Clone_Entity(p_objData, m_objEdit);
+        m_objEdit_Source = new CDM_Xuat_Kho_Raw_Data();
+        CUtility.Clone_Entity(p_objData, m_objEdit_Source);
+        m_bIs_Show_Edit = true;
+    }
+
+    private void Cancel_Edit()
+    {
+        m_bIs_Show_Edit = false;
+        r_strError = "";
+    }
+
+    private async Task Save_Detail()
+    {
+        r_strError = "";
+        r_objLayout.Start_Loading();
+        try
+        {
+            if (!CCommonFunction.Is_User_Allowed_Kho(r_strActive_User_Name, m_objHeader.Kho_ID))
+                throw new UnauthorizedAccessException("Bạn không được phân quyền thao tác trên kho của phiếu xuất này.");
+            if (!m_bIs_Update && m_objEdit.San_Pham_ID <= 0)
+                throw new InvalidOperationException("Vui lòng chọn sản phẩm.");
+            if (m_objEdit.SL_Xuat <= 0)
+                throw new InvalidOperationException("Số lượng xuất phải lớn hơn 0.");
+            if (m_objEdit.Don_Gia_Xuat < 0)
+                throw new InvalidOperationException("Đơn giá xuất không được âm.");
+
+            var v_objController = new CDM_Xuat_Kho_Raw_Data_Controller();
+            m_objEdit.Xuat_Kho_ID = r_iXuat_Kho_ID;
+            m_objEdit.Last_Updated_By = r_strActive_User_Name;
+            m_objEdit.Last_Updated_By_Function = r_strActive_Function_Code;
+            if (m_bIs_Update)
+            {
+                v_objController.FQ_124_XKR_sp_upd_Update(m_objEdit);
+                var v_objUpdated = v_objController.FQ_124_XKR_sp_sel_Get_By_ID(m_objEdit.Auto_ID)
+                    ?? throw new InvalidOperationException("Không tìm thấy dòng chi tiết sau khi cập nhật.");
+                var v_strChanges = CUtility.Compare_Entity(m_objEdit_Source, v_objUpdated);
+                CCommon_Controller.FCommon_Insert_Action_History(m_objEdit.Auto_ID, "Hiệu chỉnh", "Web",
+                    r_strActive_User_Name, r_strActive_Function_Code, r_objChuc_Nang.Ten_Chuc_Nang, v_strChanges);
+            }
+            else
+            {
+                m_objEdit.Auto_ID = v_objController.FQ_124_XKR_sp_ins_Insert(m_objEdit);
+                CCommon_Controller.FCommon_Insert_Action_History(m_objEdit.Auto_ID, "Thêm mới", "Web",
+                    r_strActive_User_Name, r_strActive_Function_Code, r_objChuc_Nang.Ten_Chuc_Nang,
+                    "Sản phẩm ID: " + m_objEdit.San_Pham_ID);
+            }
+
+            m_bIs_Show_Edit = false;
+            Load_Data_Init();
+        }
+        catch (Exception ex)
+        {
+            r_strError = CCommonFunction.Set_Error_MessageBox(ex.Message);
+        }
+        finally
+        {
+            r_objLayout.Stop_Loading();
+        }
+        await Task.CompletedTask;
+    }
+
+    protected override void Delete_Data_Entry(long p_iAuto_ID)
+    {
+        if (!CCommonFunction.Is_User_Allowed_Kho(r_strActive_User_Name, m_objHeader.Kho_ID))
+            throw new UnauthorizedAccessException("Bạn không được phân quyền thao tác trên kho của phiếu xuất này.");
+
+        var v_objController = new CDM_Xuat_Kho_Raw_Data_Controller();
+        var v_objData = v_objController.FQ_124_XKR_sp_sel_Get_By_ID(p_iAuto_ID)
+            ?? throw new InvalidOperationException("Dòng chi tiết không còn tồn tại hoặc đã bị xóa.");
+        r_strDelete_Key = v_objData.Ma_San_Pham;
+        v_objController.FQ_124_XKR_sp_del_Delete_By_ID(p_iAuto_ID, r_strActive_User_Name, r_strActive_Function_Code);
+    }
+}

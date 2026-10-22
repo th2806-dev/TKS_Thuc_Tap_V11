@@ -1,0 +1,112 @@
+@inherits FBase
+
+<div class="modal fade show" tabindex="-1" role="dialog" aria-hidden="true" style="display: block; background-color: rgba(10, 10, 10, .8);">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title">
+                    @Get_Language_Data_Field(r_iAuto_ID == 0 ? "Thêm phiếu xuất kho" : "Hiệu chỉnh thông tin phiếu xuất")
+                </h5>
+                <button type="button" class="btn-close" aria-label="Close" @onclick="Modal_Cancel"></button>
+            </div>
+            @((MarkupString)r_strError)
+            <EditForm Model="@m_objData" OnSubmit="@Handle_Form_Submit">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-lg-6">
+                            <label class="form-label">@Get_Language_Data_Field("Số phiếu xuất"):</label>
+                            <input @ref="txtFocus" @bind="m_objData.So_Phieu_Xuat_Kho" class="form-control" maxlength="100" />
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="form-label">@Get_Language_Data_Field("Ngày xuất kho"):</label>
+                            <TelerikDatePicker @bind-Value="m_objData.Ngay_Xuat_Kho" Format="@CConfig.Date_Format_String" />
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-lg-6">
+                            <label class="form-label">@Get_Language_Data_Field("Kho"):</label>
+                            <FControl_Kho_Combo @bind-BindingValue="m_objData.Kho_ID"
+                                                m_strMa_Dang_Nhap="@r_strActive_User_Name" />
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="form-label">@Get_Language_Data_Field("Ghi chú"):</label>
+                            <textarea @bind="m_objData.Ghi_Chu" class="form-control" maxlength="500" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">@Get_Language_Data_Field("Lưu Thay Đổi")</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CDM_Xuat_Kho m_objData = new();
+
+    private Task Handle_Form_Submit(Microsoft.AspNetCore.Components.Forms.EditContext p_objEditContext)
+    {
+        return Save_Data();
+    }
+
+    protected override void Load_Data()
+    {
+        if (r_iAuto_ID == 0)
+            return;
+
+        if (!r_objChuc_Nang.Is_Have_Edit_Permission)
+            throw new UnauthorizedAccessException("Bạn không có quyền hiệu chỉnh thông tin phiếu xuất.");
+
+        var v_objController = new CDM_Xuat_Kho_Controller();
+        m_objData = v_objController.FQ_123_XK_sp_sel_Get_By_ID(r_iAuto_ID)
+            ?? throw new InvalidOperationException("Phiếu xuất không còn tồn tại hoặc đã bị xóa.");
+
+        if (!CCommonFunction.Is_User_Allowed_Kho(r_strActive_User_Name, m_objData.Kho_ID))
+            throw new UnauthorizedAccessException("Bạn không được phân quyền thao tác trên kho của phiếu xuất này.");
+
+        r_bUpdate = true;
+        var v_objSource = new CDM_Xuat_Kho();
+        CUtility.Clone_Entity(m_objData, v_objSource);
+        r_objSource = v_objSource;
+    }
+
+    protected override void Add_Data()
+    {
+        Check_Data();
+        m_objData.Last_Updated_By = r_strActive_User_Name;
+        m_objData.Last_Updated_By_Function = r_strActive_Function_Code;
+        var v_objController = new CDM_Xuat_Kho_Controller();
+        m_objData.Auto_ID = r_iAuto_ID = v_objController.FQ_123_XK_sp_ins_Insert(m_objData);
+        r_strAdd_Key = m_objData.So_Phieu_Xuat_Kho;
+    }
+
+    protected override void Update_Data()
+    {
+        if (!r_objChuc_Nang.Is_Have_Edit_Permission)
+            throw new UnauthorizedAccessException("Bạn không có quyền hiệu chỉnh thông tin phiếu xuất.");
+
+        Check_Data();
+        m_objData.Last_Updated_By = r_strActive_User_Name;
+        m_objData.Last_Updated_By_Function = r_strActive_Function_Code;
+
+        var v_objController = new CDM_Xuat_Kho_Controller();
+        v_objController.FQ_123_XK_sp_upd_Update(m_objData);
+
+        var v_objDes = new CDM_Xuat_Kho();
+        CUtility.Clone_Entity(m_objData, v_objDes);
+        r_objDes = v_objDes;
+    }
+
+    private void Check_Data()
+    {
+        if (string.IsNullOrWhiteSpace(m_objData.So_Phieu_Xuat_Kho))
+            throw new InvalidOperationException("Số phiếu xuất kho không được để trống.");
+        if (m_objData.Kho_ID <= 0)
+            throw new InvalidOperationException("Vui lòng chọn kho.");
+        if (m_objData.Ngay_Xuat_Kho == null)
+            throw new InvalidOperationException("Ngày xuất kho không được để trống.");
+        if (!CCommonFunction.Is_User_Allowed_Kho(r_strActive_User_Name, m_objData.Kho_ID))
+            throw new UnauthorizedAccessException("Bạn không được phân quyền sử dụng kho đã chọn.");
+    }
+}

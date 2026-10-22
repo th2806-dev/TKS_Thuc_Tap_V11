@@ -1,0 +1,169 @@
+@inherits FBase
+@using System.Linq
+@using TKS_Thuc_Tap_V11_Report
+
+<style>
+    @@media print {
+        body * { visibility: hidden !important; }
+        .invoice-print, .invoice-print * { visibility: visible !important; }
+        .invoice-print { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
+        .invoice-print-actions { display: none !important; }
+    }
+</style>
+
+<div class="modal fade show" tabindex="-1" role="dialog" aria-hidden="true" style="display: block; background-color: rgba(10, 10, 10, .8);">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-light invoice-print-actions">
+                <h5 class="modal-title">@Get_Language_Data_Field("Phiếu xuất kho")</h5>
+                <button type="button" class="btn-close" aria-label="Close" @onclick="Modal_Cancel"></button>
+            </div>
+            @((MarkupString)r_strError)
+            <div class="modal-body">
+                <div class="invoice-print">
+                    <div class="text-center mb-4">
+                        <h3>@CConfig.Company_Name</h3>
+                        <div>@CConfig.Company_Address</div>
+                        <h2 class="mt-4">PHIẾU XUẤT KHO</h2>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6"><strong>Số phiếu:</strong> @m_objHeader.So_Phieu_Xuat_Kho</div>
+                        <div class="col-6"><strong>Ngày xuất:</strong> @m_objHeader.Ngay_Xuat_Kho?.ToString("dd/MM/yyyy")</div>
+                        <div class="col-6"><strong>Kho:</strong> @m_objHeader.Ten_Kho</div>
+                    </div>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th style="width: 45px;">STT</th>
+                                <th>Mã sản phẩm</th>
+                                <th>Tên sản phẩm</th>
+                                <th>ĐVT</th>
+                                <th class="text-end">Số lượng</th>
+                                <th class="text-end">Đơn giá</th>
+                                <th class="text-end">Trị giá</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var v_iIndex = 0; v_iIndex < m_arrDetails.Count; v_iIndex++)
+                            {
+                                var v_objRow = m_arrDetails[v_iIndex];
+                                <tr>
+                                    <td>@(v_iIndex + 1)</td>
+                                    <td>@v_objRow.Ma_San_Pham</td>
+                                    <td>@v_objRow.Ten_San_Pham</td>
+                                    <td>@v_objRow.Ten_Don_Vi_Tinh</td>
+                                    <td class="text-end">@v_objRow.SL_Xuat.ToString("N2")</td>
+                                    <td class="text-end">@v_objRow.Don_Gia_Xuat.ToString("N0")</td>
+                                    <td class="text-end">@v_objRow.Tri_Gia.ToString("N0")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="4" class="text-end">Tổng cộng</th>
+                                <th class="text-end">@m_arrDetails.Sum(x => x.SL_Xuat).ToString("N2")</th>
+                                <th></th>
+                                <th class="text-end">@m_arrDetails.Sum(x => x.Tri_Gia).ToString("N0")</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <div><strong>Ghi chú:</strong> @m_objHeader.Ghi_Chu</div>
+                    <div class="row text-center mt-5">
+                        <div class="col-4">Người lập phiếu</div>
+                        <div class="col-4">Người nhận hàng</div>
+                        <div class="col-4">Thủ kho</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer invoice-print-actions">
+                <button type="button" class="btn btn-secondary" @onclick="Modal_Cancel">@Get_Language_Data_Field("Đóng")</button>
+                <button type="button" class="btn btn-success" @onclick="Export_Excel_Template">
+                    <i class="ri-file-excel-2-line"></i> @Get_Language_Data_Field("Tải Excel")
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="Print_Invoice"><i class="mdi mdi-printer"></i> @Get_Language_Data_Field("In phiếu")</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CDM_Xuat_Kho m_objHeader = new();
+    private List<CBao_Cao_Chi_Tiet_Xuat> m_arrDetails = new();
+
+    protected override void Load_Data()
+    {
+        var v_objController = new CDM_Xuat_Kho_Controller();
+        m_objHeader = v_objController.FQ_123_XK_sp_sel_Get_By_ID(r_iAuto_ID)
+            ?? throw new InvalidOperationException("Phiếu xuất không còn tồn tại hoặc đã bị xóa.");
+        if (!CCommonFunction.Is_User_Allowed_Kho(r_strActive_User_Name, m_objHeader.Kho_ID))
+            throw new UnauthorizedAccessException("Bạn không được phân quyền truy cập kho của phiếu xuất này.");
+        m_arrDetails = new CReport_Xuat_Kho().rptReport_Xuat_Kho(r_iAuto_ID);
+    }
+
+    private async Task Print_Invoice()
+    {
+        await g_jsRuntime.InvokeVoidAsync("window.print");
+    }
+
+    private async Task Export_Excel_Template()
+    {
+        r_objLayout.Start_Loading();
+        try
+        {
+            if (!CCommonFunction.Is_User_Allowed_Kho(r_strActive_User_Name, m_objHeader.Kho_ID))
+                throw new UnauthorizedAccessException("Bạn không được phân quyền xuất phiếu xuất của kho này.");
+
+            string v_strTemplate_Relative_Path = CConfig.Template_URL.TrimStart(
+                Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string v_strTemplate_Path = Path.Combine(
+                g_objEnvironment.WebRootPath,
+                v_strTemplate_Relative_Path,
+                "Phieu_Xuat_Kho_Template.xlsx");
+            byte[] v_arrFile_Bytes = new CReport_Xuat_Kho().Export_Excel_Template(
+                v_strTemplate_Path, m_objHeader, m_arrDetails);
+
+            string v_strDate_Folder = DateTime.Now.ToString("ddMMyyyy");
+            string v_strExport_Relative_Path = CConfig.Export_Excel_URL.TrimStart(
+                Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string v_strExport_Folder = Path.Combine(
+                g_objEnvironment.WebRootPath, v_strExport_Relative_Path, v_strDate_Folder);
+            Directory.CreateDirectory(v_strExport_Folder);
+
+            string v_strFile_Name = $"Phieu_Xuat_Kho_{r_iAuto_ID}_{DateTime.Now:ddMMyyHHmmssfff}.xlsx";
+            string v_strExport_Path = Path.Combine(v_strExport_Folder, v_strFile_Name);
+            await File.WriteAllBytesAsync(v_strExport_Path, v_arrFile_Bytes);
+
+            CLog_Report_File_Excel v_objReport_File = new()
+            {
+                Chu_Hang_ID = r_iChu_Hang_ID,
+                Report_File_Type_ID = (int)EReport_File_Type_ID.Export_Excel,
+                Ten_File = v_strFile_Name,
+                File_URL = Path.Combine(CConfig.Export_Excel_URL, v_strDate_Folder, v_strFile_Name),
+                Last_Updated_By = r_strActive_User_Name,
+                Last_Updated_By_Function = r_strActive_Function_Code
+            };
+            new CLog_Report_File_Excel_Controller().FQ_427_RFE_sp_ins_Insert(v_objReport_File);
+
+            using var v_objFile_Stream = new MemoryStream(v_arrFile_Bytes);
+            using var v_objStream_Reference = new DotNetStreamReference(stream: v_objFile_Stream);
+            await g_jsRuntime.InvokeVoidAsync("downloadFileFromStream", v_strFile_Name, v_objStream_Reference);
+
+            CLog_Nhat_Ky_Truy_Cap_Chuc_Nang v_objFunction_History = new()
+            {
+                Ma_Chuc_Nang = r_strActive_Function_Code,
+                Ma_Dang_Nhap = r_strActive_User_Name,
+                Ten_Chuc_Nang = r_objChuc_Nang.Ten_Chuc_Nang + " - " + Get_Language_Data_Field("Export Excel")
+            };
+            new CLog_Nhat_Ky_Truy_Cap_Chuc_Nang_Controller()
+                .FQ_424_NKTCCN_sp_ins_Insert(v_objFunction_History);
+        }
+        catch (Exception ex)
+        {
+            r_strError = CCommonFunction.Set_Error_MessageBox(ex.Message);
+        }
+        finally
+        {
+            r_objLayout.Stop_Loading();
+        }
+    }
+}
