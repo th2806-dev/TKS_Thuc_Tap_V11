@@ -1,0 +1,87 @@
+@inherits FBase
+
+<div class="modal fade show" tabindex="-1" role="dialog" aria-hidden="true" style="display: block; background-color: rgba(10, 10, 10, .8);">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title">
+                    @Get_Language_Data_Field(r_iAuto_ID == 0 ? "Thêm phân quyền kho" : "Hiệu chỉnh phân quyền kho")
+                </h5>
+                <button type="button" class="btn-close" aria-label="Close" @onclick="Modal_Cancel"></button>
+            </div>
+            @((MarkupString)r_strError)
+            <EditForm Model="@m_objData">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-lg-6">
+                            <label class="form-label">@Get_Language_Data_Field("Mã đăng nhập"):</label>
+                            <FControl_Thanh_Vien_Combo @bind-BindingStringValue="m_objData.Ma_Dang_Nhap" />
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="form-label">@Get_Language_Data_Field("Kho"):</label>
+                            <FControl_Kho_Combo @bind-BindingValue="m_objData.Kho_ID"
+                                                m_strMa_Dang_Nhap="@r_strActive_User_Name" />
+                        </div>
+                    </div>
+                </div>
+            </EditForm>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" @onclick="Save_Data">
+                    @Get_Language_Data_Field("Lưu Thay Đổi")
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CDM_Kho_User m_objData = new();
+
+    protected override void Load_Data()
+    {
+        if (r_iAuto_ID == 0)
+            return;
+
+        var v_objController = new CDM_Kho_User_Controller();
+        m_objData = v_objController.FQ_116_KU_sp_sel_Get_By_ID(r_iAuto_ID)
+            ?? throw new InvalidOperationException("Phân quyền kho không còn tồn tại hoặc đã bị xóa.");
+
+        r_bUpdate = true;
+        var v_objSource = new CDM_Kho_User();
+        CUtility.Clone_Entity(m_objData, v_objSource);
+        r_objSource = v_objSource;
+    }
+
+    protected override void Add_Data()
+    {
+        Check_Data();
+        m_objData.Last_Updated_By = r_strActive_User_Name;
+        m_objData.Last_Updated_By_Function = r_strActive_Function_Code;
+
+        var v_objController = new CDM_Kho_User_Controller();
+        m_objData.Auto_ID = r_iAuto_ID = v_objController.FQ_116_KU_sp_ins_Insert(m_objData);
+        r_strAdd_Key = m_objData.Ma_Dang_Nhap + " / " + m_objData.Kho_ID;
+    }
+
+    protected override void Update_Data()
+    {
+        Check_Data();
+        m_objData.Last_Updated_By = r_strActive_User_Name;
+        m_objData.Last_Updated_By_Function = r_strActive_Function_Code;
+
+        var v_objController = new CDM_Kho_User_Controller();
+        v_objController.FQ_116_KU_sp_upd_Update(m_objData);
+
+        var v_objDes = new CDM_Kho_User();
+        CUtility.Clone_Entity(m_objData, v_objDes);
+        r_objDes = v_objDes;
+    }
+
+    private void Check_Data()
+    {
+        if (string.IsNullOrWhiteSpace(m_objData.Ma_Dang_Nhap))
+            throw new InvalidOperationException("Mã đăng nhập không được để trống.");
+        if (m_objData.Kho_ID <= 0)
+            throw new InvalidOperationException("Vui lòng chọn kho.");
+    }
+}

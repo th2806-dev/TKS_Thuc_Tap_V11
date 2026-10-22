@@ -1,0 +1,90 @@
+@inherits FBase
+
+@Layout_Default_Filter(m_grdData, "")
+
+<div class="row" style="padding-top: 10px;">
+    <div class="col-lg-12">
+        @((MarkupString)r_strError)
+        <TelerikGrid Data="@m_arrData" Height="calc(100vh - 170px)" Resizable="true" Reorderable="true" @ref="@m_grdData">
+            <GridExport>
+                <GridExcelExport FileName="Kho_User_Export" AllPages="true" />
+                <GridCsvExport FileName="Kho_User_Export" AllPages="true" />
+            </GridExport>
+            <GridColumns>
+                <GridCheckboxColumn SelectAll="true" CheckBoxOnlySelection="true" Width="30px" />
+                <GridColumn Width="60px">
+                    <Template>
+                        @{
+                            var v_objData = context as CDM_Kho_User;
+                        }
+                        <button type="button" class="btn btn-link" title="Xem" @onclick="@(() => Open_Info(v_objData.Auto_ID))">
+                            <i class="mdi mdi-eye" style="color: purple;"></i>
+                        </button>
+                        <button type="button" class="btn btn-link" data-bs-toggle="dropdown" aria-expanded="false" title="Thao tác">
+                            <i class="mdi mdi-cog-outline" style="color: purple;"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            @if (r_objChuc_Nang.Is_Have_Edit_Permission)
+                            {
+                                <li>
+                                    <button class="dropdown-item" type="button" @onclick="@(() => Open_Edit(v_objData.Auto_ID))">
+                                        <i class="ri-edit-2-line align-bottom me-1"></i>&nbsp; @Get_Language_Data_Field("Hiệu chỉnh")
+                                    </button>
+                                </li>
+                            }
+                            @if (r_objChuc_Nang.Is_Have_Delete_Permission)
+                            {
+                                <li>
+                                    <button class="dropdown-item" type="button" @onclick="@(() => Delete_Data(v_objData.Auto_ID))">
+                                        <i class="ri-delete-bin-line align-bottom me-1"></i>&nbsp; @Get_Language_Data_Field("Xóa")
+                                    </button>
+                                </li>
+                            }
+                        </ul>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(CDM_Kho_User.Auto_ID)" Title="ID" Width="90px" />
+                <GridColumn Field="@nameof(CDM_Kho_User.Ma_Dang_Nhap)" Title="Mã đăng nhập" Width="180px" />
+                <GridColumn Field="@nameof(CDM_Kho_User.Ho_Ten)" Title="Họ tên" Width="220px" />
+                <GridColumn Field="@nameof(CDM_Kho_User.Ten_Kho)" Title="Kho" Width="220px" />
+                <GridColumn Field="@nameof(CDM_Kho_User.Created)" Title="Ngày tạo" DisplayFormat="{0:dd/MM/yyyy HH:mm}" Width="180px" />
+            </GridColumns>
+        </TelerikGrid>
+    </div>
+</div>
+
+@if (r_bIs_Show_Info)
+{
+    <F2116_2_Kho_User_Info r_iAuto_ID="@r_iAuto_ID" OnClose="@Close_Info" />
+}
+@if (r_bIs_Show_Help_Guide)
+{
+    <FCommon_Help_Guide m_strFCode="@r_strActive_Function_Code" OnClose="@Close_Helpguide" />
+}
+@if (r_bIs_Show_Edit)
+{
+    <F2116_3_Kho_User_Edit r_iAuto_ID="@r_iAuto_ID" OnClose="@Close_Edit" />
+}
+
+@code {
+    private List<CDM_Kho_User> m_arrData = new();
+    private TelerikGrid<CDM_Kho_User> m_grdData = new();
+
+    protected override void Load_Data()
+    {
+        Format_Grid(m_grdData);
+        var v_objController = new CDM_Kho_User_Controller();
+        m_arrData = v_objController.FQ_116_KU_sp_sel_List_By_Created(r_objFilter.Date_From, r_objFilter.Date_To);
+    }
+
+    protected override void Delete_Data_Entry(long p_iAuto_ID)
+    {
+        var v_objController = new CDM_Kho_User_Controller();
+        var v_objData = v_objController.FQ_116_KU_sp_sel_Get_By_ID(p_iAuto_ID);
+        if (v_objData == null)
+            throw new InvalidOperationException("Phân quyền kho không còn tồn tại hoặc đã bị xóa.");
+
+        r_strDelete_Key = v_objData.Ma_Dang_Nhap + " / " + v_objData.Ten_Kho;
+        v_objController.FQ_116_KU_sp_del_Delete_By_ID(p_iAuto_ID, r_strActive_User_Name, r_strActive_Function_Code);
+    }
+}
