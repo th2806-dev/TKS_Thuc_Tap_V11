@@ -780,6 +780,7 @@
                 };
 
             v_objCtrPQ.F1005_sp_upd_Phan_Quyen_Chuc_Nang_View(v_objData);
+            Refresh_Permission_Cache();
         }
 
         catch (Exception ex)
@@ -829,6 +830,7 @@
                 };
 
             v_objCtrPQ.F1005_sp_upd_Phan_Quyen_Chuc_Nang_Add(v_objData);
+            Refresh_Permission_Cache();
         }
 
         catch (Exception ex)
@@ -878,6 +880,7 @@
                 };
 
             v_objCtrPQ.F1005_sp_upd_Phan_Quyen_Chuc_Nang_Edit(v_objData);
+            Refresh_Permission_Cache();
         }
 
         catch (Exception ex)
@@ -927,6 +930,7 @@
                 };
 
             v_objCtrPQ.F1005_sp_upd_Phan_Quyen_Chuc_Nang_Delete(v_objData);
+            Refresh_Permission_Cache();
         }
 
         catch (Exception ex)
@@ -976,6 +980,7 @@
                 };
 
             v_objCtrPQ.F1005_sp_upd_Phan_Quyen_Chuc_Nang_Export(v_objData);
+            Refresh_Permission_Cache();
         }
 
         catch (Exception ex)
@@ -1212,9 +1217,7 @@
 
         try
         {
-            CCache_Phan_Quyen_Chuc_Nang.Load_Cache_Phan_Quyen_Chuc_Nang();
-            //load lại Cache chức năng pda -Khangnt
-            CCache_Chuc_Nang_App.Load_Cache_Chuc_Nang_App();
+            Refresh_Permission_Cache();
         }
 
         catch (Exception ex)
@@ -1223,5 +1226,11 @@
         }
 
         r_objLayout.Stop_Loading();
+    }
+
+    private static void Refresh_Permission_Cache()
+    {
+        CCache_Phan_Quyen_Chuc_Nang.Load_Cache_Phan_Quyen_Chuc_Nang();
+        CCache_Chuc_Nang_App.Load_Cache_Chuc_Nang_App();
     }
 }

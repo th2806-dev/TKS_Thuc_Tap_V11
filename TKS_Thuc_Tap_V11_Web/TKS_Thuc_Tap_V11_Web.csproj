@@ -20,6 +20,15 @@
     <Content Remove="Controllers\NewFolder\**" />
     <EmbeddedResource Remove="Controllers\NewFolder\**" />
     <None Remove="Controllers\NewFolder\**" />
+    <Content Remove="wwwroot\**\~$*" />
+    <Content Remove="wwwroot\FileManagement\Template\Phieu_Nhap_Kho_Template.xlsx" />
+    <Content Remove="wwwroot\FileManagement\Template\Phieu_Xuat_Kho_Template.xlsx" />
+    <None Include="wwwroot\FileManagement\Template\Phieu_Nhap_Kho_Template.xlsx"
+          CopyToPublishDirectory="PreserveNewest"
+          TargetPath="wwwroot\FileManagement\Template\Phieu_Nhap_Kho_Template.xlsx" />
+    <None Include="wwwroot\FileManagement\Template\Phieu_Xuat_Kho_Template.xlsx"
+          CopyToPublishDirectory="PreserveNewest"
+          TargetPath="wwwroot\FileManagement\Template\Phieu_Xuat_Kho_Template.xlsx" />
   </ItemGroup>
 
   <ItemGroup>

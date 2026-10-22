@@ -155,6 +155,8 @@
 
         #endregion
 
+        m_objData.Created_By = r_strActive_User_Name;
+        m_objData.Created_By_Function = r_strActive_Function_Code;
         m_objData.Last_Updated_By = r_strActive_User_Name;
         m_objData.Last_Updated_By_Function = r_strActive_Function_Code;
         m_objData.Auto_ID = r_iAuto_ID = v_objCtrData.FQ_104_CH_sp_ins_Insert(m_objData);

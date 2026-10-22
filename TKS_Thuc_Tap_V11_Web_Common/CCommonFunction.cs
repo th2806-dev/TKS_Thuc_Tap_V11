@@ -32,6 +32,8 @@ using TKS_Thuc_Tap_V11_Data_Access.Utility;
 using TKS_Thuc_Tap_V11_Data_Access.Entity.Sys;
 using TKS_Thuc_Tap_V11_Data_Access.Controller.Cache;
 using TKS_Thuc_Tap_V11_Data_Access.Controller.Sys;
+using TKS_Thuc_Tap_V11_Data_Access.Controller.DM;
+using TKS_Thuc_Tap_V11_Data_Access.Entity.DM;
 using TKS_Thuc_Tap_V11_Data_Access.Entity.API;
 
 namespace TKS_Thuc_Tap_V11_Web_Common.Common
@@ -565,6 +567,54 @@ namespace TKS_Thuc_Tap_V11_Web_Common.Common
             return v_objToken;
         }
 
+        public static bool Is_User_In_Kho_Admin_Group(string p_strUser)
+        {
+			if (string.IsNullOrWhiteSpace(p_strUser))
+			    return false;
+
+			return CCache_Nhom_Thanh_Vien_User.List_Data_By_User(p_strUser)
+			    .Where(v_objGroupUser => v_objGroupUser.deleted == 0)
+			    .Any(v_objGroupUser =>
+			    {
+			        CSys_Nhom_Thanh_Vien v_objGroup =
+			            CCache_Nhom_Thanh_Vien.Get_Data_By_ID(v_objGroupUser.Nhom_Thanh_Vien_ID);
+			        return v_objGroup != null
+			            && v_objGroup.deleted == 0
+			            && string.Equals(v_objGroup.Ten_Nhom_Thanh_Vien, "Quản trị",
+			                StringComparison.OrdinalIgnoreCase);
+			    });
+        }
+
+        public static HashSet<long> Get_Kho_ID_By_User(string p_strUser)
+        {
+			if (string.IsNullOrWhiteSpace(p_strUser))
+			    return new HashSet<long>();
+
+			if (Is_User_In_Kho_Admin_Group(p_strUser))
+			    return CCache_Kho.Get_All_Data()
+			        .Where(v_objKho => v_objKho.Auto_ID > 0)
+			        .Select(v_objKho => v_objKho.Auto_ID)
+			        .ToHashSet();
+
+			CDM_Kho_User_Controller v_objController = new();
+			return v_objController.FQ_116_KU_sp_sel_List_By_Ma_Dang_Nhap(p_strUser)
+			    .Where(v_objKhoUser => v_objKhoUser.deleted == 0 && v_objKhoUser.Kho_ID > 0)
+			    .Select(v_objKhoUser => v_objKhoUser.Kho_ID)
+			    .ToHashSet();
+        }
+
+        public static List<CDM_Kho> Get_Kho_Data_By_User(string p_strUser)
+        {
+			HashSet<long> v_setAllowedKho_ID = Get_Kho_ID_By_User(p_strUser);
+			return CCache_Kho.Get_All_Data()
+			    .Where(v_objKho => v_setAllowedKho_ID.Contains(v_objKho.Auto_ID))
+			    .ToList();
+        }
+
+        public static bool Is_User_Allowed_Kho(string p_strUser, long p_lngKho_ID)
+        {
+			return p_lngKho_ID > 0 && Get_Kho_ID_By_User(p_strUser).Contains(p_lngKho_ID);
+        }
 
     }
 }

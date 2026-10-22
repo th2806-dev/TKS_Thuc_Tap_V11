@@ -1,4 +1,6 @@
-﻿<div class="app-menu navbar-menu">
+﻿@inject ProtectedLocalStorage g_objSession_Storage
+
+<div class="app-menu navbar-menu">
     <!-- LOGO -->
     <div class="navbar-brand-box">
         <!-- Dark Logo-->
@@ -132,10 +134,14 @@
     {
         if (firstRender == true)
         {
-            m_arrChuc_Nang = CCommonFunction.List_Chuc_Nang_By_User("admin");
+            string v_strActive_User_Name = await CSession.Get_Active_User_Name(g_objSession_Storage);
+            if (string.IsNullOrWhiteSpace(v_strActive_User_Name) == false)
+            {
+                m_arrChuc_Nang = CCommonFunction.List_Chuc_Nang_By_User(v_strActive_User_Name);
 
-            m_strMenu = Generate_Menu(null, 0);
-            StateHasChanged();
+                m_strMenu = Generate_Menu(null, 0);
+                StateHasChanged();
+            }
         }
 
         await base.OnAfterRenderAsync(firstRender);
